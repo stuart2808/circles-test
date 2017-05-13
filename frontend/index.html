@@ -1,0 +1,162 @@
+<html>
+<head>
+	<script src="js/jquery-1.9.1.js"></script>
+	<script src="js/bootstrap.min.js"></script>
+	<script src="js/engine.js"></script>
+
+	<link href="css/bootstrap.min.css" rel="stylesheet">
+	<link href="css/style.css" rel="stylesheet">
+
+
+</head>
+<body>
+<div class="container">
+	<div class="row">
+		<div class="col-md-6">
+			<h1>Circles</h1>
+		</div>
+		<div class="col-md-6">
+			<button id="load-layout-mdl" type="button" class="btn btn-primary btn-lg pull-right" style="margin:10px">Load</button>
+			<button id="reset-layout" type="button" class="btn btn-primary btn-lg pull-right" style="margin:10px">Reset</button>
+		</div>	
+	</div>
+	<div style="text-align:center;">
+		<div class="input-group" display: inline-block; ">
+			<input id="layout-name" class="form-control" placeholder="Name of Layout">
+			<span class="input-group-btn"><button id="save-layout" type="button" class="btn btn-primary">Save</button></span>
+		</div>
+		<br>
+
+		<canvas id="canvas" width="1000" height="700" style="border: 1px solid black;"></canvas>
+		<br>
+
+		<div id="save-success" class="alert alert-success" style="display:none">
+		  <strong>Successfully Saved Record</strong>
+		</div>
+	</div>
+</div>
+
+<div class="modal fade" tabindex="-1" role="dialog" id="load-mdl">
+	<div class="modal-dialog" role="document">
+		<div class="modal-content">
+			<div class="modal-header">
+				<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+				<h4 class="modal-title">Choose a layout to load</h4>
+			</div>
+			<div class="modal-body">
+				<label>Layout</label>
+				<select id="layout-list" class="form-control"></select>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+				<button id="load-layout" type="button" class="btn btn-primary">Load</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+
+<script>
+
+$(document).ready(function() {
+
+	var layout_list = {};
+	var active_layout = 0;
+
+	$('#reset-layout').click(function()
+	{
+		active_layout = 0;
+		$('#layout-name').val('');
+		engine.reset_layout();
+	});
+
+	$('#load-layout-mdl').click(function()
+	{
+		$('#load-mdl').modal('show');
+	});
+
+
+	$('#load-layout').click(function()
+	{
+		$('#layout-name').val(layout_list[$('#layout-list').val()]['name']);
+		engine.add_layout(JSON.parse(layout_list[$('#layout-list').val()]['layout'][0]));
+		active_layout = $('#layout-list').val();
+		$('#load-mdl').modal('hide');
+	});
+
+	$('#save-layout').click(function()
+	{
+		var layout_data =  {
+			"name" : $('#layout-name').val(),
+			"layout" : JSON.stringify(engine.return_layout())
+		};
+
+		if(active_layout == 0) 
+		{
+			$.ajax({
+	            type: 'POST',
+	            contentType: 'application/json',
+	            data : JSON.stringify(layout_data),
+	            url: 'http://localhost:5000/create',
+	            success : function(text)
+		        {
+		        	$('#save-success').fadeIn('slow', function () {
+					    $(this).delay(3000).fadeOut('slow');
+				    });
+		        	refresh_layouts();
+		        }
+	        });
+        } else {
+        	layout_data['id'] = active_layout;
+        	$.ajax({
+	            type: 'POST',
+	            contentType: 'application/json',
+	            data : JSON.stringify(layout_data),
+	            url: 'http://localhost:5000/update',
+	            success : function(text)
+		        {
+		        	$('#save-success').fadeIn('slow', function () {
+					    $(this).delay(3000).fadeOut('slow');
+				    });
+		        	refresh_layouts();
+		        }
+	        });
+        }
+	});
+
+	function refresh_layouts()
+	{
+		layout_list = {};
+		$.ajax({
+            type: 'GET',
+            url: 'http://localhost:5000/getall',
+            async: false,
+            success : function(text)
+	        {
+	        	$.each(text, function(i,v)
+	        	{
+	        		layout_list[v['_id']] = v;
+	        	});
+	        }
+        });
+
+		$('#layout-list').html('').append($('<option>').val("").text('Please Select'))
+		$.each(layout_list, function(i,v)
+		{
+			$('#layout-list').append($('<option>').val(i).text(v['name']))
+		});
+	}
+
+	refresh_layouts();
+
+	engine.initialise();
+
+	console.log(engine.return_layout());
+});	
+
+</script>
+
+
+</body>
+
+</html>
